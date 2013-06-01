@@ -55,14 +55,25 @@ namespace Socks5Client
             }
 
             if (buffer[1] == USER_PASS_AUTH && (_username == null || _password == null))
-            {
                 throw new ArgumentException("No username or password provided");
-            }
+
 
             if (buffer[1] == USER_PASS_AUTH)
             {
-                throw new NotImplementedException();
+                byte[] credentials = new byte[_username.Length + _password.Length + 3];
+                credentials[0] = 1;
+                credentials[1] = (byte)_username.Length;
+                Encoding.ASCII.GetBytes(_username).CopyTo(credentials, 2);
+                credentials[_username.Length + 2] = (byte)_password.Length;
+                Encoding.ASCII.GetBytes(_password).CopyTo(credentials, _username.Length + 3);
+
+                _socket.Send(credentials, credentials.Length, SocketFlags.None);
+                buffer = new byte[2];
+                _socket.Receive(buffer, buffer.Length, SocketFlags.None);
+                if (buffer[1] != SOCKS_CMD_SUCCSESS)
+                    throw new SocksRefuseException("Username or password invalid");
             }
+
             byte addrType = GetAddressType();
             byte[] address = GetDestAddressBytes(addrType, _destAddr);
             byte[] port = GetDestPortBytes(_destPort);
